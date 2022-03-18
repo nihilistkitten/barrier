@@ -6,7 +6,7 @@ CFLAGS := $(OPT) $(WARN)
 HEADERS := barrier.h
 DEPS := $(HEADERS) $(OBJECTS)
 
-TARGETS = main test_centralized
+BINARIES = main test_centralized test_unused
 
 
 all: main
@@ -23,10 +23,7 @@ main: main.c $(DEPS)
 test: test_centralized
 	./test_centralized
 
-test_centralized: test.o centralized.o
-	$(CXX) -o $@ $^ $(CFLAGS)
-
-test_unused: test.o unused.o
+test_%: test.o %.o
 	$(CXX) -o $@ $^ $(CFLAGS)
 
 %.o: %.c
@@ -34,7 +31,7 @@ test_unused: test.o unused.o
 
 clean:
 	-rm -f *.o
-	-rm -f $(TARGETS)
+	-rm -f $(BINARIES)
 	-rm -f data.csv
 	-rm -f bench.png
 
