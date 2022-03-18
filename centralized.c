@@ -39,3 +39,9 @@ void *init_global_barrier_state(const n_threads_t p __attribute__((unused))) {
 void *init_local_barrier_state(const n_threads_t p __attribute__((unused))) {
   return NULL;
 }
+
+/// Free the local state.
+void free_local_barrier_state(void *state) { free(state); }
+
+/// Free the global state.
+void free_global_barrier_state(void *state __attribute__((unused))) {}

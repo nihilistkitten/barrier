@@ -7,8 +7,7 @@ HEADERS := barrier.h utils.h
 OBJECTS := utils.o
 DEPS := $(HEADERS) $(OBJECTS)
 
-BINARIES = main test_centralized test_unused
-
+BINARIES = main test_centralized test_unused test_dissemination
 
 all: main
 

@@ -12,6 +12,7 @@ typedef uint32_t round_t;
 
 typedef struct GlobalState {
   bool ***flags;
+  n_threads_t p; // stored for destructor
 } GlobalState;
 
 typedef struct LocalState {
@@ -47,6 +48,8 @@ void *init_global_barrier_state(const n_threads_t p) {
   const n_threads_t rounds = num_rounds(p);
 
   state = alloc(1, sizeof(GlobalState));
+  state->p = p;
+
   state->flags = alloc(p, sizeof(bool **));
 
   for (counter = 0; counter < p; counter++) {
@@ -66,4 +69,22 @@ void *init_local_barrier_state(const n_threads_t p __attribute__((unused))) {
   state->parity = 0;
 
   return state;
+}
+
+/// Free the local state.
+void free_local_barrier_state(void *state) { free(state); }
+
+/// Free the global state.
+void free_global_barrier_state(void *state) {
+  GlobalState *global = state;
+  n_threads_t counter;
+
+  for (counter = 0; counter < global->p; counter++) {
+    free(global->flags[counter][0]);
+    free(global->flags[counter][1]);
+    free(global->flags[counter]);
+  }
+
+  free(global->flags);
+  free(global);
 }

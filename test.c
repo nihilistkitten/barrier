@@ -20,7 +20,7 @@ void *test_thread_one(void *global) {
   atomic_store(&__test_counter, 1);
   barrier(2, 0, local, global);
 
-  free(local);
+  free_local_barrier_state(local);
   return NULL;
 }
 
@@ -29,7 +29,7 @@ void *test_thread_two(void *global) {
   barrier(2, 1, local, global);
   atomic_store(&__test_counter, 2);
 
-  free(local);
+  free_local_barrier_state(local);
   return NULL;
 }
 
@@ -45,7 +45,7 @@ bool test_simple() {
   pthread_join(thread_id_one, NULL);
   pthread_join(thread_id_two, NULL);
 
-  free(global);
+  free_global_barrier_state(global);
   return (__test_counter == 2);
 }
 
