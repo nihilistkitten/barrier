@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include "barrier.h"
+#include "utils.h"
 
 typedef struct CentralizedGlobalState {
   atomic_ulong counter;
@@ -29,16 +30,12 @@ void barrier(const n_threads_t p, const pthread_t id __attribute__((unused)),
 }
 
 void *init_global_barrier_state(const n_threads_t p __attribute__((unused))) {
-  State *state = calloc(1, sizeof(State));
-
-  if (!state) {
-    fprintf(stderr, "Memory allocation failed!\n");
-    exit(1);
-  }
+  State *state = alloc(1, sizeof(State));
 
   atomic_store(&state->counter, 1);
   return state;
 }
+
 void *init_local_barrier_state(const n_threads_t p __attribute__((unused))) {
   return NULL;
 }

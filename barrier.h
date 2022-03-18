@@ -11,3 +11,9 @@ void *init_local_barrier_state(const n_threads_t p);
 
 /// A barrier.
 void barrier(const uint32_t p, const pthread_t id, void *local, void *global);
+
+/// Free the local state.
+void free_local_barrier_state(void *state);
+
+/// Free the global state.
+void free_global_barrier_state(void *state);

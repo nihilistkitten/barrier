@@ -18,7 +18,7 @@ void *test_thread_one(void *global) {
   void *local = init_local_barrier_state(2);
   sleep(1);
   atomic_store(&__test_counter, 1);
-  barrier(2, pthread_self(), local, global);
+  barrier(2, 0, local, global);
 
   free(local);
   return NULL;
@@ -26,7 +26,7 @@ void *test_thread_one(void *global) {
 
 void *test_thread_two(void *global) {
   void *local = init_local_barrier_state(2);
-  barrier(2, pthread_self(), local, global);
+  barrier(2, 1, local, global);
   atomic_store(&__test_counter, 2);
 
   free(local);

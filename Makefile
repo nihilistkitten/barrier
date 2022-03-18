@@ -1,9 +1,10 @@
 CXX := gcc
 WARN := -Wall -Werror -Wextra -pedantic 
-OPT := -g
+OPT := -g -lm
 CFLAGS := $(OPT) $(WARN)
 
-HEADERS := barrier.h
+HEADERS := barrier.h utils.h
+OBJECTS := utils.o
 DEPS := $(HEADERS) $(OBJECTS)
 
 BINARIES = main test_centralized test_unused
@@ -20,10 +21,11 @@ data.csv: main
 main: main.c $(DEPS)
 	$(CXX) -o $@ $^ $(CFLAGS)
 
-test: test_centralized
+test: test_centralized test_dissemination
 	./test_centralized
+	./test_dissemination
 
-test_%: test.o %.o
+test_%: test.o utils.o %.o
 	$(CXX) -o $@ $^ $(CFLAGS)
 
 %.o: %.c
