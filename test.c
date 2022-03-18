@@ -1,6 +1,7 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "barrier.h"
@@ -18,6 +19,8 @@ void *test_thread_one(void *global) {
   sleep(1);
   atomic_store(&__test_counter, 1);
   barrier(2, pthread_self(), local, global);
+
+  free(local);
   return NULL;
 }
 
@@ -25,15 +28,16 @@ void *test_thread_two(void *global) {
   void *local = init_local_barrier_state(2);
   barrier(2, pthread_self(), local, global);
   atomic_store(&__test_counter, 2);
+
+  free(local);
   return NULL;
 }
 
 bool test_simple() {
-  atomic_store(&__test_counter, 0);
-
   pthread_t thread_id_one, thread_id_two;
-
   void *global = init_global_barrier_state(2);
+
+  atomic_store(&__test_counter, 0);
 
   pthread_create(&thread_id_one, NULL, *test_thread_one, global);
   pthread_create(&thread_id_two, NULL, *test_thread_two, global);
@@ -41,6 +45,7 @@ bool test_simple() {
   pthread_join(thread_id_one, NULL);
   pthread_join(thread_id_two, NULL);
 
+  free(global);
   return (__test_counter == 2);
 }
 
