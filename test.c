@@ -75,12 +75,13 @@ unsigned _Atomic oneb_c = ATOMIC_VAR_INIT(false);
 /// A thread which guarantees no thread has left before it enters.
 void *oneb_t(void *global) {
   ThreadState *state = global;
-  bool out = true;
+  bool out;
 
   void *local = init_local_barrier_state(state->p);
-  if (oneb_c) {
-    out = false;
-  }
+  // if oneb_c has been flipped, we know a thread has left the barrier, but we
+  // haven't entered yet. otherwise no thread has executed an instruction after
+  // the barrier and so from our perspective the barrier is correct
+  out = !oneb_c;
   barrier(state->p, state->id, local, state->global);
   atomic_store(&oneb_c, true);
 
@@ -88,6 +89,7 @@ void *oneb_t(void *global) {
   return (void *)out;
 }
 
+/// Test many threads entering a single barrier.
 bool test_oneb(size_t p) {
   size_t counter;
   void *thread_ret;
@@ -153,6 +155,7 @@ void *twob_t1(void *global) {
   return (void *)out;
 }
 
+/// Test with two barriers in sequence with threads alternating writes.
 bool test_twob() {
   pthread_t thread_id_zero, thread_id_one;
   bool out = true;
