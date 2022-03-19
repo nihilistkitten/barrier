@@ -33,6 +33,7 @@ void *init_global_barrier_state(const n_threads_t p __attribute__((unused))) {
   State *state = alloc(1, sizeof(State));
 
   atomic_store(&state->counter, 1);
+  state->sense = false;
   return state;
 }
 

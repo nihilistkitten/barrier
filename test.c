@@ -14,9 +14,9 @@ void assert_test(bool result, char name[], char message[]) {
 }
 
 typedef struct ThreadState {
-  n_threads_t p;
   // we maintain a separate id from the os to make math simple
-  n_threads_t id;
+  n_threads_t p;
+  pthread_t id;
   void *global;
 } ThreadState;
 
@@ -54,11 +54,13 @@ bool test_wbw() {
   ThreadState state_zero;
   state_zero.global = global;
   state_zero.id = 0;
+  state_zero.p = 2;
   pthread_create(&thread_id_zero, NULL, *test_thread_zero, &state_zero);
 
   ThreadState state_one;
   state_one.global = global;
   state_one.id = 1;
+  state_one.p = 2;
   pthread_create(&thread_id_one, NULL, *test_thread_one, &state_one);
 
   pthread_join(thread_id_zero, NULL);
@@ -86,32 +88,35 @@ void *test_single_barrier_thread(void *global) {
   return (void *)out;
 }
 
-bool test_single_barrier(size_t n) {
+bool test_single_barrier(size_t p) {
   size_t counter;
-  pthread_t *ids = alloc(n, sizeof(pthread_t));
-  ThreadState *states = alloc(n, sizeof(ThreadState));
-  void *thread_ret = (void *)true;
+  void *thread_ret;
   bool out = true;
+  pthread_t *ids = alloc(p, sizeof(pthread_t));
+  ThreadState *states = alloc(p, sizeof(ThreadState));
 
-  void *global = init_global_barrier_state(2);
+  void *global = init_global_barrier_state(p);
 
-  for (counter = 0; counter < n; counter++) {
+  for (counter = 0; counter < p; counter++) {
     states[counter].global = global;
     states[counter].id = counter;
+    states[counter].p = p;
     pthread_create(&ids[counter], NULL, *test_single_barrier_thread,
                    &states[counter]);
   }
 
-  for (counter = 0; counter < n; counter++) {
-    states[counter].global = global;
-    states[counter].id = counter;
-    pthread_join(ids[counter], thread_ret);
+  for (counter = 0; counter < p; counter++) {
+    pthread_join(ids[counter], (void *)&thread_ret);
     // if out is true, replace it with the thread return value; this way if
     // any thread returns false we will return false
-    if (out && !*(bool *)thread_ret) {
+    if (out && !(bool)thread_ret) {
+      printf("%zu", counter);
       out = false;
     }
   }
+
+  free(ids);
+  free(states);
 
   return out;
 }
@@ -119,6 +124,6 @@ bool test_single_barrier(size_t n) {
 int main() {
   assert_test(test_wbw(), "write barrier write",
               "thread one wrote after thread two");
-  assert_test(test_single_barrier(2), "one barrier",
-              "a thread left the single barrier before every thread entered");
+  assert_test(test_single_barrier(10), "single barrier",
+              "a thread left the barrier before every thread entered");
 }
