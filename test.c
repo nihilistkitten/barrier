@@ -213,6 +213,7 @@ void *manyb_t(void *global) {
     }
     barrier(state->p, state->id, local, state->global);
     atomic_store(&manyb_c, counter + 1);
+    sleep((double)rand() / (double)RAND_MAX);
   }
 
   free_local_barrier_state(local);

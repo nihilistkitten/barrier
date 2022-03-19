@@ -1,5 +1,13 @@
 # Reed CS385: Barrier Implementation and Analysis
 
+## Building
+
+The barriers only work with optimizations turned off; otherwise I think it
+optimizes out the spinning, or something similar. The make targets should set
+the correct flags for you.
+
+I apologize for the general messiness of some of the code.
+
 ## Correctness
 
 ### Testing
@@ -33,10 +41,11 @@ tests the sense/parity implementations.
 
 `test_manyb` tests many threads (the global `N_BARRIERS`) with many barriers in
 sequence. It works similarly to `test_raw`: at barrier `N`, each thread asserts
-that the global counter is `N`, enters the barrier, and then writes the counter
-to `N+1`. If any thread executed any instruction after the barrier before any
-thread executed any instruction before the barrier, then the later thread would
-fail its assertion. The test file runs this for every thread count up to 32.
+that the global counter is `N`, enters the barrier, sleeps for a random amount
+of time, and then writes the counter to `N+1`. If any thread executed any
+instruction after the barrier before any thread executed any instruction before
+the barrier, then the later thread would fail its assertion. The test file runs
+this for every thread count up to 32.
 
 These tests are of course not exhaustive, but they give me reasonably high
 confidence in the guarantees made by the barriers, at least for simple cases.
