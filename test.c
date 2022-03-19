@@ -98,6 +98,7 @@ bool test_oneb(size_t p) {
   ThreadState *states = alloc(p, sizeof(ThreadState));
 
   void *global = init_global_barrier_state(p);
+  atomic_store(&oneb_c, false);
 
   for (counter = 0; counter < p; counter++) {
     states[counter].global = global;
@@ -194,7 +195,68 @@ bool test_twob() {
   return out;
 }
 
+#define N_BARRIERS 100
+unsigned _Atomic manyb_c = ATOMIC_VAR_INIT(0);
+
+/// A thread which guarantees no thread has left before it enters.
+void *manyb_t(void *global) {
+  size_t counter;
+  ThreadState *state = global;
+  bool out = true;
+
+  void *local = init_local_barrier_state(state->p);
+
+  for (counter = 0; counter < N_BARRIERS; counter++) {
+    if (manyb_c != counter) {
+      out = false;
+    }
+    barrier(state->p, state->id, local, state->global);
+    atomic_store(&manyb_c, counter + 1);
+  }
+
+  free_local_barrier_state(local);
+  return (void *)out;
+}
+
+/// Test many threads entering many barriers.
+bool test_manyb(n_threads_t p) {
+  size_t counter;
+  void *thread_ret;
+  bool out = true;
+  pthread_t *ids = alloc(p, sizeof(pthread_t));
+  ThreadState *states = alloc(p, sizeof(ThreadState));
+
+  void *global = init_global_barrier_state(p);
+  atomic_store(&manyb_c, 0);
+
+  for (counter = 0; counter < p; counter++) {
+    states[counter].global = global;
+    states[counter].id = counter;
+    states[counter].p = p;
+    pthread_create(&ids[counter], NULL, *manyb_t, &states[counter]);
+  }
+
+  for (counter = 0; counter < p; counter++) {
+    pthread_join(ids[counter], (void *)&thread_ret);
+    // if any thread returns false we want to return false
+    if (!(bool)thread_ret) {
+      out = false;
+    }
+  }
+
+  if (manyb_c != N_BARRIERS) {
+    out = false;
+  }
+
+  free(ids);
+  free(states);
+
+  return out;
+}
+
 int main() {
+  n_threads_t p;
+
   assert_test(test_wbw(), "write barrier write",
               "thread one's pre-barrier write executed after thread two's "
               "post-barrier write");
@@ -202,4 +264,9 @@ int main() {
               "a thread left the barrier before every thread entered");
   assert_test(test_twob(), "two barriers",
               "two threads wrote in the wrong order");
+
+  for (p = 1; p < 32; p++) {
+    assert_test(test_manyb(p), "many barriers",
+                "threads wrote in the wrong order");
+  }
 }
