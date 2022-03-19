@@ -20,6 +20,8 @@ typedef struct LocalState {
   int parity;
 } LocalState;
 
+#define STARTING_SENSE false;
+
 n_threads_t num_rounds(n_threads_t p) { return ceil(log2(p)); }
 
 void barrier(const n_threads_t p, const pthread_t id __attribute__((unused)),
@@ -44,7 +46,7 @@ void barrier(const n_threads_t p, const pthread_t id __attribute__((unused)),
 
 void *init_global_barrier_state(const n_threads_t p) {
   GlobalState *state;
-  n_threads_t counter;
+  n_threads_t counter, inner_counter;
   const n_threads_t rounds = num_rounds(p);
 
   state = alloc(1, sizeof(GlobalState));
@@ -55,7 +57,13 @@ void *init_global_barrier_state(const n_threads_t p) {
   for (counter = 0; counter < p; counter++) {
     state->flags[counter] = alloc(2, sizeof(bool *));
     state->flags[counter][0] = alloc(rounds, sizeof(bool));
+    for (inner_counter = 0; inner_counter < rounds; inner_counter++) {
+      state->flags[counter][0][inner_counter] = STARTING_SENSE;
+    }
     state->flags[counter][1] = alloc(rounds, sizeof(bool));
+    for (inner_counter = 0; inner_counter < rounds; inner_counter++) {
+      state->flags[counter][1][inner_counter] = STARTING_SENSE;
+    }
   }
 
   return state;
@@ -65,7 +73,7 @@ void *init_local_barrier_state(const n_threads_t p __attribute__((unused))) {
   LocalState *state;
   state = alloc(1, sizeof(LocalState));
 
-  state->sense = false;
+  state->sense = STARTING_SENSE;
   state->parity = 0;
 
   return state;

@@ -7,7 +7,7 @@ HEADERS := barrier.h utils.h
 OBJECTS := utils.o
 DEPS := $(HEADERS) $(OBJECTS)
 
-BINARIES = main test_centralized test_unused test_dissemination
+BINARIES = main test_centralized test_unused test_dissemination test_mcs
 
 all: main
 
@@ -20,9 +20,10 @@ data.csv: main
 main: main.c $(DEPS)
 	$(CXX) -o $@ $^ $(CFLAGS)
 
-test: test_centralized test_dissemination
+test: test_centralized test_dissemination test_mcs
 	./test_centralized
 	./test_dissemination
+	./test_mcs
 
 test_%: test.o utils.o %.o
 	$(CXX) -o $@ $^ $(CFLAGS)
