@@ -20,77 +20,77 @@ typedef struct ThreadState {
   void *global;
 } ThreadState;
 
-unsigned _Atomic wbw_c = ATOMIC_VAR_INIT(0);
+unsigned _Atomic waw_c = ATOMIC_VAR_INIT(0);
 
-void *wbw_t0(void *global) {
+void *waw_t0(void *global) {
   ThreadState *state = global;
 
   void *local = init_local_barrier_state(state->p);
   sleep(1);
-  atomic_store(&wbw_c, 1);
+  atomic_store(&waw_c, 1);
   barrier(state->p, state->id, local, state->global);
 
   free_local_barrier_state(local);
   return NULL;
 }
 
-void *wbw_t1(void *global) {
+void *waw_t1(void *global) {
   ThreadState *state = global;
 
   void *local = init_local_barrier_state(state->p);
   barrier(state->p, state->id, local, state->global);
-  atomic_store(&wbw_c, 2);
+  atomic_store(&waw_c, 2);
 
   free_local_barrier_state(local);
   return NULL;
 }
 
-bool test_wbw() {
+bool test_waw() {
   pthread_t thread_id_zero, thread_id_one;
   void *global = init_global_barrier_state(2);
 
-  atomic_store(&wbw_c, 0);
+  atomic_store(&waw_c, 0);
 
   ThreadState state_zero;
   state_zero.global = global;
   state_zero.id = 0;
   state_zero.p = 2;
-  pthread_create(&thread_id_zero, NULL, *wbw_t0, &state_zero);
+  pthread_create(&thread_id_zero, NULL, *waw_t0, &state_zero);
 
   ThreadState state_one;
   state_one.global = global;
   state_one.id = 1;
   state_one.p = 2;
-  pthread_create(&thread_id_one, NULL, *wbw_t1, &state_one);
+  pthread_create(&thread_id_one, NULL, *waw_t1, &state_one);
 
   pthread_join(thread_id_zero, NULL);
   pthread_join(thread_id_one, NULL);
 
   free_global_barrier_state(global);
-  return (wbw_c == 2);
+  return (waw_c == 2);
 }
 
-unsigned _Atomic oneb_c = ATOMIC_VAR_INIT(false);
+unsigned _Atomic raw_c = ATOMIC_VAR_INIT(false);
 
 /// A thread which guarantees no thread has left before it enters.
-void *oneb_t(void *global) {
+void *raw_t(void *global) {
   ThreadState *state = global;
   bool out;
 
   void *local = init_local_barrier_state(state->p);
-  // if oneb_c has been flipped, we know a thread has left the barrier, but we
+  // if raw_c has been flipped, we know a thread has left the barrier, but we
   // haven't entered yet. otherwise no thread has executed an instruction after
   // the barrier and so from our perspective the barrier is correct
-  out = !oneb_c;
+  out = !raw_c;
   barrier(state->p, state->id, local, state->global);
-  atomic_store(&oneb_c, true);
+  atomic_store(&raw_c, true);
 
   free_local_barrier_state(local);
   return (void *)out;
 }
 
 /// Test many threads entering a single barrier.
-bool test_oneb(size_t p) {
+bool test_raw(size_t p) {
   size_t counter;
   void *thread_ret;
   bool out = true;
@@ -98,13 +98,13 @@ bool test_oneb(size_t p) {
   ThreadState *states = alloc(p, sizeof(ThreadState));
 
   void *global = init_global_barrier_state(p);
-  atomic_store(&oneb_c, false);
+  atomic_store(&raw_c, false);
 
   for (counter = 0; counter < p; counter++) {
     states[counter].global = global;
     states[counter].id = counter;
     states[counter].p = p;
-    pthread_create(&ids[counter], NULL, *oneb_t, &states[counter]);
+    pthread_create(&ids[counter], NULL, *raw_t, &states[counter]);
   }
 
   for (counter = 0; counter < p; counter++) {
@@ -117,6 +117,7 @@ bool test_oneb(size_t p) {
 
   free(ids);
   free(states);
+  free_global_barrier_state(global);
 
   return out;
 }
@@ -250,6 +251,7 @@ bool test_manyb(n_threads_t p) {
 
   free(ids);
   free(states);
+  free_global_barrier_state(global);
 
   return out;
 }
@@ -257,10 +259,10 @@ bool test_manyb(n_threads_t p) {
 int main() {
   n_threads_t p;
 
-  assert_test(test_wbw(), "write barrier write",
+  assert_test(test_waw(), "write barrier write",
               "thread one's pre-barrier write executed after thread two's "
               "post-barrier write");
-  assert_test(test_oneb(32), "single barrier",
+  assert_test(test_raw(32), "single barrier",
               "a thread left the barrier before every thread entered");
   assert_test(test_twob(), "two barriers",
               "two threads wrote in the wrong order");

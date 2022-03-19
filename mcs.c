@@ -94,6 +94,8 @@ void *init_global_barrier_state(const n_threads_t p) {
 
 /// Initialize the thread-local state.
 void *init_local_barrier_state(const n_threads_t p __attribute__((unused))) {
+  // need to heap-allocate this bool because we need the barrier to be passed a
+  // pointer to the state so its modifications are persistent
   bool *out = alloc(1, sizeof(bool));
   *out = !STARTING_SENSE;
   return out;

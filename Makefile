@@ -1,6 +1,6 @@
 CXX := gcc
 WARN := -Wall -Werror -Wextra -pedantic 
-OPT := -o3 -lm
+OPT := -O0 -lm
 CFLAGS := $(OPT) $(WARN)
 
 HEADERS := barrier.h utils.h
