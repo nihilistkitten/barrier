@@ -1,31 +1,29 @@
 CXX := gcc
 WARN := -Wall -Werror -Wextra -pedantic 
-OPT := -O0 -lm
+OPT := -lm
 CFLAGS := $(OPT) $(WARN)
 
-HEADERS := barrier.h utils.h
-OBJECTS := utils.o
-DEPS := $(HEADERS) $(OBJECTS)
+BARRIERS := centralized dissemination mcs
 
-BINARIES = main test_centralized test_unused test_dissemination test_mcs
+TESTS := $(patsubst %, test_%, $(BARRIERS))
+BENCHES := $(patsubst %, bench_%, $(BARRIERS)) bench_overhead
+DATA := $(patsubst %, %.csv, $(BARRIERS)) overhead.csv
 
-all: main
+bench.png: $(DATA) plot.py pyproject.toml
+	poetry run python plot.py
 
-bench.png: data.csv pyproject.toml main.py
-	poetry run python main.py
-
-data.csv: main
-	./$^ > $@
-
-main: main.c $(DEPS)
-	$(CXX) -o $@ $^ $(CFLAGS)
-
-test: test_centralized test_dissemination test_mcs
+test: $(TESTS)
 	./test_centralized
 	./test_dissemination
 	./test_mcs
 
+%.csv: bench_%
+	./$^ > $@
+
 test_%: test.o utils.o %.o
+	$(CXX) -o $@ $^ $(CFLAGS)
+
+bench_%: bench.o utils.o %.o
 	$(CXX) -o $@ $^ $(CFLAGS)
 
 %.o: %.c
@@ -33,8 +31,9 @@ test_%: test.o utils.o %.o
 
 clean:
 	-rm -f *.o
-	-rm -f $(BINARIES)
-	-rm -f data.csv
-	-rm -f bench.png
+	-rm -f *.png
+	-rm -f $(TESTS)
+	-rm -f $(BENCHES)
+	-rm -f $(DATA)
 
-.PHONY: all clean test
+.PHONY: clean test bench

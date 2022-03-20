@@ -49,3 +49,67 @@ this for every thread count up to 32.
 
 These tests are of course not exhaustive, but they give me reasonably high
 confidence in the guarantees made by the barriers, at least for simple cases.
+
+## Performance
+
+### Benchmarking
+
+The file `bench.c` runs a simple benchmark (create p threads and run them
+through 100 barriers) 10 times, averaging the results. This is plotted by the
+`plot.py` python file; running this depends on `poetry` for python
+virtualization.
+
+The `overhead.c` file contains an empty implementation of `barrier.h` for the
+purpose of calculating loop overhead.
+
+### Analysis
+
+Here is a simple log plot of threadcount vs time:
+
+![Threadcount vs Time](plots/bench.png)
+
+The key thing to note from this plot is that there is a large jump in runtime at
+`p = 17` threads; this is because my machine has 16 cores, and so the scheduler is
+able to run each pthread on a separate core for `p <= 16`.
+
+There is significant overhead associated with the loop. This next plot shows the
+overhead overlaid on top of the barrier runtimes:
+
+![Threadcount vs Time, with overhead](plots/bench-with-overhead.png)
+
+I'll analyze the case `p <= 16` separately from the case `p > 16`, since the
+scheduler works so differently on each case.
+
+Here is the same graph as above, but only the datapoints for the `p <= 16` case,
+and no longer on a log scale:
+
+![Threadcount vs Time, small threadcounts](plots/bench-small.png)
+
+The loop overhead has a fairly large effect here, and in some cases the do
+nothing "barrier" even takes longer to run than other barriers; clearly the
+barriers have little effect in this case. This makes sense, since as
+mentioned the scheduler is able to give each thread a separate process,
+meaning there is little to no competition for shared resources.
+
+Here is the residual runtime when subtracting off the overhead:
+
+![Threadcount vs Time, residual runtime](plots/bench-residuals.png)
+
+Because for some cases the measured loop overhead happened to be larger than the barrier runtime, some of these values are negative.
+
+As expected, the centralized barrier performs well for small
+threadcounts, when spinning is less punished. The MCS barrier performs the
+worst; the higher constants from the double tree structure dominate the
+asymptotic optimality.
+
+Finally, here is the runtime for `p > 16`:
+
+![Threadcount vs Time, high threadcounts](plots/bench-large.png)
+
+Here it's much less likely we're seeing noise, because the overhead is so small
+in relation to the barrier time. It's clear that we're paying a significant cost
+for synchronization here, as the scheduler has to repeatedly stop running one
+thread on a given core and switch to another on the same core, whereas for
+smaller `p` it was able to just give each thread a core and let them run.
+However, clearly this is still not a sufficiently high threadcount for the
+constant spinning in a centralized barrier to represent a significant cost.

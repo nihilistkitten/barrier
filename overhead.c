@@ -3,8 +3,8 @@
 
 #include "barrier.h"
 
-/// Sanity check barrier which does nothing to verify tests fail on simple
-/// incorrect barriers.
+// NOP barrier, obviously incorrect, used for computing loop overhead for
+// benchmarking.
 void barrier(const n_threads_t p __attribute__((unused)),
              const pthread_t id __attribute__((unused)),
              void *local __attribute__((unused)),

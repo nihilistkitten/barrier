@@ -13,13 +13,6 @@ void assert_test(bool result, char name[], char message[]) {
   }
 }
 
-typedef struct ThreadState {
-  // we maintain a separate id from the os to make math simple
-  n_threads_t p;
-  pthread_t id;
-  void *global;
-} ThreadState;
-
 unsigned _Atomic waw_c = ATOMIC_VAR_INIT(0);
 
 void *waw_t0(void *global) {
@@ -268,7 +261,7 @@ int main() {
   assert_test(test_twob(), "two barriers",
               "two threads wrote in the wrong order");
 
-  for (p = 1; p < 32; p++) {
+  for (p = 1; p <= 32; p++) {
     assert_test(test_manyb(p), "many barriers",
                 "threads wrote in the wrong order");
   }
