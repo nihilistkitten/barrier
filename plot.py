@@ -4,9 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-MAX_THREADS = 32
 N_CORES = 16
-N_BARRIERS = 100
 
 sns.set_theme()
 
@@ -14,8 +12,7 @@ sns.set_theme()
 # PLOT
 def load_data(name):
     ret = pd.read_csv(name.lower() + ".csv")
-    ret["Barrier"] = [name] * MAX_THREADS
-    ret["Time"] = ret["Time"] / 100
+    ret["Barrier"] = [name] * len(ret)
     return ret
 
 
@@ -30,13 +27,6 @@ splot.set(
     yscale="log",
     xlabel="Thread Count",
     ylabel="Time (ns)",
-    xticks=[
-        0,
-        5,
-        10,
-        15,
-        20,
-    ],
 )
 
 splot.set_title("Barrier Runtime", fontsize=18)
@@ -55,13 +45,6 @@ splot.set(
     yscale="log",
     xlabel="Thread Count",
     ylabel="Time (ns)",
-    xticks=[
-        0,
-        5,
-        10,
-        15,
-        20,
-    ],
 )
 
 splot.set_title("Barrier Runtime with Overhead", fontsize=18)

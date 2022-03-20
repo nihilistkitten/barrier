@@ -1,3 +1,4 @@
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -6,9 +7,9 @@
 #include "barrier.h"
 #include "utils.h"
 
-#define MAX_THREADS 32
-#define N_BARRIERS 100
-#define N_ITERS 10
+#define MAX_THREADS 1 << 14
+#define N_BARRIERS 1
+#define N_ITERS 1
 
 void *thread(void *global) {
   ThreadState *state = global;
@@ -59,10 +60,11 @@ double bench_many(n_threads_t p) {
   double time;
 
   for (int32_t counter = 0; counter < N_ITERS; counter++) {
+    fprintf(stderr, "threadcount %d, iteration %d\n", p, counter);
     time = time + bench(p);
   }
 
-  return time / N_ITERS;
+  return time / (N_ITERS * N_BARRIERS);
 }
 
 void bench_and_print(n_threads_t p) {
@@ -74,7 +76,8 @@ int main() {
   printf("Threadcount,Time\n");
 
   srand(0);
-  for (int32_t counter = 1; counter <= MAX_THREADS; counter++) {
+  for (int32_t counter = 1 << 13; counter <= MAX_THREADS;
+       counter = counter * 2) {
     bench_and_print(counter);
   }
 

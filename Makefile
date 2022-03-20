@@ -1,6 +1,6 @@
 CXX := gcc
 WARN := -Wall -Werror -Wextra -pedantic 
-OPT := -lm
+OPT := -lm -pthread
 CFLAGS := $(OPT) $(WARN)
 
 BARRIERS := centralized dissemination mcs

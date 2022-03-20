@@ -1,12 +1,26 @@
-# Reed CS385: Barrier Implementation and Analysis
+# Reed CS389: Barrier Implementation and Analysis
 
-## Building
+## Code Tour
+
+I apologize for the general messiness of some of the code.
 
 The barriers only work with optimizations turned off; otherwise I think it
 optimizes out the spinning, or something similar. The make targets should set
 the correct flags for you.
 
-I apologize for the general messiness of some of the code.
+The file `barrier.h` contains an interface for a barrier, with setup and
+teardown methods. There are three barrier implementations, `centralized.c`, `dissemination.c`, and `mcs.c`.
+
+The file `test.c` links against a barrier implementation and contains test code
+abstracted over the implementation.
+
+The file `bench.c` runs a simple benchmark (create p threads and run them
+through 100 barriers) 10 times, averaging the results. This is plotted by the
+`plot.py` python file; running this depends on `poetry` for python
+virtualization.
+
+The `overhead.c` file contains an empty implementation of `barrier.h` for the
+purpose of calculating loop overhead.
 
 ## Correctness
 
@@ -50,19 +64,7 @@ this for every thread count up to 32.
 These tests are of course not exhaustive, but they give me reasonably high
 confidence in the guarantees made by the barriers, at least for simple cases.
 
-## Performance
-
-### Benchmarking
-
-The file `bench.c` runs a simple benchmark (create p threads and run them
-through 100 barriers) 10 times, averaging the results. This is plotted by the
-`plot.py` python file; running this depends on `poetry` for python
-virtualization.
-
-The `overhead.c` file contains an empty implementation of `barrier.h` for the
-purpose of calculating loop overhead.
-
-### Analysis
+## Performance Analysis
 
 Here is a simple log plot of threadcount vs time:
 
@@ -70,7 +72,10 @@ Here is a simple log plot of threadcount vs time:
 
 The key thing to note from this plot is that there is a large jump in runtime at
 `p = 17` threads; this is because my machine has 16 cores, and so the scheduler is
-able to run each pthread on a separate core for `p <= 16`.
+able to run each pthread on a separate core for `p <= 16`. While running the
+benchmarks, I did my best to quiet my machine (closing daemons, etc), except for
+a system monitor, which did record 100% CPU utilization for nearly the entirety
+of the benchmark.
 
 There is significant overhead associated with the loop. This next plot shows the
 overhead overlaid on top of the barrier runtimes:
@@ -79,6 +84,8 @@ overhead overlaid on top of the barrier runtimes:
 
 I'll analyze the case `p <= 16` separately from the case `p > 16`, since the
 scheduler works so differently on each case.
+
+### Small threadcounts
 
 Here is the same graph as above, but only the datapoints for the `p <= 16` case,
 and no longer on a log scale:
@@ -95,14 +102,18 @@ Here is the residual runtime when subtracting off the overhead:
 
 ![Threadcount vs Time, residual runtime](plots/bench-residuals.png)
 
-Because for some cases the measured loop overhead happened to be larger than the barrier runtime, some of these values are negative.
+Because for some cases the measured loop overhead happened to be larger than the
+barrier runtime, some of these values are negative.
 
 As expected, the centralized barrier performs well for small
 threadcounts, when spinning is less punished. The MCS barrier performs the
 worst; the higher constants from the double tree structure dominate the
 asymptotic optimality.
 
-Finally, here is the runtime for `p > 16`:
+### Large threadcounts
+
+Here is the runtime for `p > 16` (notice that the y axis is in
+units of 1e7 ns; I'm not super happy with how seaborn displays that fact):
 
 ![Threadcount vs Time, high threadcounts](plots/bench-large.png)
 
@@ -111,5 +122,35 @@ in relation to the barrier time. It's clear that we're paying a significant cost
 for synchronization here, as the scheduler has to repeatedly stop running one
 thread on a given core and switch to another on the same core, whereas for
 smaller `p` it was able to just give each thread a core and let them run.
-However, clearly this is still not a sufficiently high threadcount for the
-constant spinning in a centralized barrier to represent a significant cost.
+
+At first, I thought that this is still not a sufficiently high threadcount for
+the constant spinning in a centralized barrier to represent a significant cost.
+However, here is the same plot for thread counts in powers of 2 up to 4096, but
+running only one iteration of 10 barriers, just to make the measurement feasible:
+
+![Threadcount vs Time, powers of two threadcounts](plots/bench-pow2.png)
+
+I see three options:
+
+1. You need even higher values of `p` for the asymptotic behavior to dominate
+   the constants. I find this unlikely.
+2. There are performance issues with my implementations of MCS and
+   dissemination. I've spent a little while analyzing them searching for the
+   issues unsuccessfully, but I think it's decently likely this is the issue.
+3. In the specific case of process threads repeatedly running barriers (and so
+   in particular, no IO or network bounding, so the threads constantly take 100%
+   CPU), there's not a large penalty for spinning in centralized barriers,
+   because the scheduler is good at determining which thread is able to make
+   progress without needing to consistently poll spinning threads. This is just
+   a theory; to test it, we'd need to make these threads perform IO-bound work
+   that doesn't let individual threads use 100% of the cpu, and compare the
+   performance of these barriers under those conditions. If this is the case, it
+   might indicate that for this kind of CPU-bound work the most important thing
+   to optimize for is the scheduler's ability to schedule threads which are able
+   to make progress. It might be interesting to look for a way to trace a CPU's
+   active processes over time to get a lower-level view of the scheduler.
+
+Regardless, I think the major takeaway from this analysis is that for pthreads
+in particular there is a huge performance penalty for running more threads than
+the number of cores available, especially when the threads are performing
+CPU-intensive operations without waiting for network or disk resources.
